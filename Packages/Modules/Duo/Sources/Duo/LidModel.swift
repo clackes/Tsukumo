@@ -1,0 +1,108 @@
+// SPDX-FileCopyrightText: 2026 Tsukumo contributors
+// SPDX-FileCopyrightText: 2026 fx-xf
+// SPDX-License-Identifier: GPL-3.0-only
+//
+// Adapted from fx-xf/duo (MIT), see THIRD-PARTY-NOTICES.md.
+
+import Foundation
+
+/// Hinge angle in, glass tilt out. Kept free of AppKit so it can be driven by a
+/// simulated lid.
+struct LidModel {
+  /// The fold starts once the lid is closed past this angle. Above it the
+  /// desktop is left alone, however far the lid is opened or nudged.
+  var startAngle: Double = 80
+  /// Measure the fold from wherever the lid last came to rest instead: every
+  /// movement folds, by exactly how far the lid has come down, and a lid that
+  /// stops gets its desktop back at whatever angle you leave it — however far
+  /// it is from shut. The threshold plays no part.
+  var dynamic = false
+
+  private(set) var springAngle: Double
+  private(set) var springVelocity: Double = 0
+  /// Degrees the glass has tilted away from the viewer.
+  private(set) var tilt: Double = 0
+  /// `tilt` as a fraction of the way from the start angle to shut.
+  private(set) var progress: Double = 0
+
+  /// The angle the dynamic fold is measured from.
+  private var anchor: Double
+  /// A slow average of the sensor. Rattle averages out of it; a real movement,
+  /// however slow, keeps pushing it the same way.
+  private var slowAngle: Double
+  private var clock: Double = 0
+  private var trail: [(time: Double, angle: Double)] = []
+  private var stillFor: Double = 0
+
+  /// Past this the panel is nearly edge-on and there is nothing left to show.
+  private static let maxTilt = 85.0
+  /// The sensor reports whole degrees and a hand on the deck rattles them by
+  /// one, so the first degrees never count as a fold: a quick flick of the lid
+  /// (Tsukumo: up to 8°) does not start the animation, a real movement exceeds it
+  /// and the fold grows from zero without jumps.
+  var deadZone = 8.0
+  /// The lid is holding still when the slow average has drifted less than
+  /// this over the window. A close at 1.5°/s still counts as moving.
+  private static let stillWindow = 0.3
+  private static let stillDrift = 1.6
+  private static let settleDelay = 0.05
+  private static let springSlice = 1.0 / 120
+  private static let releaseTime = 0.18
+
+  init(angle: Double) {
+    springAngle = angle
+    anchor = angle
+    slowAngle = angle
+  }
+
+  @discardableResult
+  mutating func step(target: Double, dt: Double) -> Double {
+    clock += dt
+
+    // Tight on the way down so the glass keeps up with the lid; a softer,
+    // slightly bouncy spring on the way up gives the snap back. Stepped in
+    // slices: a spring this stiff only holds still at 30 fps or better, and
+    // a stalled frame would otherwise set it ringing on a rattle of a degree.
+    let slices = max(1, Int((dt / Self.springSlice).rounded(.up)))
+    let slice = dt / Double(slices)
+    for _ in 0..<slices {
+      let closing = target < springAngle
+      let stiffness: Double = closing ? 1400 : 1100
+      let damping: Double = closing ? 75 : 66
+      springVelocity += (-stiffness * (springAngle - target) - damping * springVelocity) * slice
+      springAngle += springVelocity * slice
+    }
+
+    guard dynamic else {
+      anchor = springAngle
+      trail.removeAll()
+      stillFor = 0
+      return finish(max(startAngle, 1) - springAngle)
+    }
+
+    slowAngle += (target - slowAngle) * min(1, dt / 0.12)
+    trail.append((clock, slowAngle))
+    while let first = trail.first, clock - first.time > Self.stillWindow { trail.removeFirst() }
+    let spanned = clock - (trail.first?.time ?? clock) >= Self.stillWindow * 0.9
+    let drift = abs(slowAngle - (trail.first?.angle ?? slowAngle))
+    stillFor = spanned && drift < Self.stillDrift ? stillFor + dt : 0
+
+    if springAngle > anchor {
+      // Opening hands the reference back: only closing folds.
+      anchor = springAngle
+    } else if stillFor > Self.settleDelay {
+      // A lid that has stopped becomes the new reference, so the desktop
+      // unfolds wherever you leave it.
+      anchor += (springAngle - anchor) * min(1, dt / Self.releaseTime)
+      if anchor - springAngle < 0.4 { anchor = springAngle }
+    }
+
+    return finish(anchor - springAngle - deadZone)
+  }
+
+  private mutating func finish(_ degrees: Double) -> Double {
+    tilt = min(Self.maxTilt, max(0, degrees))
+    progress = min(1, tilt / max(startAngle, 1))
+    return progress
+  }
+}

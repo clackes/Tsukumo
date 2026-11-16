@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Exceptions of Tools/zero-cost/macho-check. Only Core may appear here, with the
+# reason (DESIGN.md §4.2, rule 2). Format: <binary name> <section>   # reason

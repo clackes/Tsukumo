@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tsukumo</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Tsukumo controls Music and Spotify (playback, favorites) only if you turn on the Island's AppleScript backend, and runs Windeck AppleScript actions only if you enabled them.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Tsukumo taps an app's audio only when you set its volume or pick a different output for it in the Sound module. Nothing is recorded or sent: the audio stays in Core Audio and goes back to the speaker you chose.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Tsukumo reads your AirPods battery level when they connect, to show it in the notch.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_tsukumo._tcp</string>
+		<string>_tsukumo._udp</string>
+	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Tsukumo shows your next event in the notch. Calendar data stays on this Mac.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 clackes. Licensed under GPL-3.0.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Tsukumo finds and connects Tsukumo Remote, Windeck, Duo and Home Assistant on your local network.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Tsukumo uses the head motion detected by your AirPods to move the pointer, only in pointer mode.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Tsukumo shows due reminders in the notch. Data stays on this Mac.</string>
+</dict>
+</plist>

@@ -1,0 +1,55 @@
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Formatting is decided by swift-format (.swift-format): the style rules that
+# overlap with it are turned off here.
+
+included:
+  - App/Sources
+  - Packages
+excluded:
+  - "**/.build"
+  - Packages/Vendor
+
+disabled_rules:
+  - trailing_comma
+  - opening_brace
+  - todo
+
+opt_in_rules:
+  - empty_count
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - unowned_variable_capture
+  - weak_delegate
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+identifier_name:
+  min_length: 2
+  excluded: [id]
+type_body_length:
+  warning: 300
+file_length:
+  warning: 500
+
+custom_rules:
+  no_cvdisplaylink:
+    name: "Niente CVDisplayLink"
+    regex: '\bCVDisplayLink'
+    message: "Use NSView.displayLink only during animations (DESIGN.md §5.2 rule 4)."
+    severity: error
+  no_raw_timer:
+    name: "Timer only via ResourceBag"
+    regex: '\b(Timer\.scheduledTimer|Timer\(|DispatchSource\.makeTimerSource)'
+    excluded: 'Packages/Core/Sources/ModuleKit/ResourceBag\.swift'
+    message: "Timer and DispatchSource go through the ResourceBag (DESIGN.md §5.2 rule 1)."
+    severity: error
+  spdx_header:
+    name: "Header SPDX"
+    regex: '\A(?!(// swift-tools-version[^\n]*\n)?// SPDX-FileCopyrightText: )'
+    message: "Ogni file inizia con l'header SPDX (REUSE)."
+    severity: error

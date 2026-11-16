@@ -1,0 +1,56 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Deterministic check of "zero cost" on the final Mach-O (DESIGN.md §4.2,
+# rule 2): no code must run at launch on behalf of modules.
+# Fails if an app binary contains:
+#   __objc_nlclslist / __objc_nlcatlist  ObjC classes or categories with +load
+#   __mod_init_func / __init_offsets     static initializers and constructors
+# Exceptions live in Tools/zero-cost/allowlist.txt, one per line:
+#   <binary name> <section>   # reason
+#
+# Usage: Tools/zero-cost/macho-check <Tsukumo.app>
+set -eu
+
+APP="${1:?Uso: macho-check <Tsukumo.app>}"
+ALLOWLIST="$(dirname "$0")/allowlist.txt"
+FORBIDDEN='__objc_nlclslist __objc_nlcatlist __mod_init_func __init_offsets'
+failures=0
+checked=0
+
+for binary in "$APP"/Contents/MacOS/*; do
+  [ -f "$binary" ] || continue
+  name="$(basename "$binary")"
+  # __preview.dylib is the Xcode previews stub, present only in Debug.
+  [ "$name" = "__preview.dylib" ] && continue
+  checked=$((checked + 1))
+  sections="$(otool -l "$binary" | awk '
+    $1 == "sectname" { section = $2 }
+    $1 == "size" && section != "" { if (strtonum_hex($2) > 0) print section; section = "" }
+    function strtonum_hex(value,    digits, i, total, char) {
+      digits = "0123456789abcdef"; total = 0; value = tolower(substr(value, 3))
+      for (i = 1; i <= length(value); i++) { char = substr(value, i, 1); total = total * 16 + index(digits, char) - 1 }
+      return total
+    }')"
+  for section in $FORBIDDEN; do
+    if printf '%s\n' "$sections" | grep -qx "$section"; then
+      if grep -Eq "^$name[[:space:]]+$section([[:space:]]|\$)" "$ALLOWLIST" 2>/dev/null; then
+        echo "macho-check: $name contains $section (allowed by the allowlist)"
+      else
+        echo "macho-check: $name contains $section: code executed at launch" >&2
+        failures=$((failures + 1))
+      fi
+    fi
+  done
+done
+
+if [ "$checked" -eq 0 ]; then
+  echo "macho-check: no binary found in $APP/Contents/MacOS" >&2
+  exit 1
+fi
+if [ "$failures" -gt 0 ]; then
+  echo "macho-check: $failures forbidden sections. See DESIGN.md §4.2, regola 2." >&2
+  exit 1
+fi
+echo "macho-check: $checked binaries, no static initializer or +load"

@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Entitlements and Info.plist manifest of the Mac app (DESIGN.md §3.8).
+# It is the source of truth for Tools/manifest-check/manifest-check: one key
+# more or less in the compiled bundle fails the build.
+
+bundle_id: dev.local.tsukumo # provisional, local only (§1)
+min_system_version: "26.0"
+url_schemes: [tsukumo]
+bonjour_services: [_tsukumo._tcp, _tsukumo._udp]
+
+info_plist:
+  required:
+    - CFBundleIdentifier
+    - CFBundleURLTypes # URL scheme tsukumo://
+    - LSUIElement
+    - LSMinimumSystemVersion
+    - NSAppleEventsUsageDescription
+    - NSAudioCaptureUsageDescription # mixer and per-app output of the Sound module (§2.4.1, spike 27)
+    - NSBluetoothAlwaysUsageDescription # to be confirmed in spike 6
+    - NSBonjourServices # _tsukumo._tcp, _tsukumo._udp
+    - NSCalendarsFullAccessUsageDescription
+    - NSLocalNetworkUsageDescription
+    - NSMotionUsageDescription
+    - NSRemindersFullAccessUsageDescription
+  pending: # needs the domain and Sparkle's EdDSA key
+    - SUFeedURL
+    - SUPublicEDKey
+
+entitlements:
+  required:
+    com.apple.security.automation.apple-events: true
+    com.apple.security.device.audio-input: true # process tap of the Sound module (§2.4.1)
+    com.apple.security.personal-information.calendars: true
+  debug_only:
+    com.apple.security.get-task-allow: true
+  pending: # needs Team ID and Developer ID provisioning profile
+    - keychain-access-groups
+    - com.apple.security.application-groups
+    - com.apple.application-identifier
+    - com.apple.developer.team-identifier
+  forbidden:
+    - com.apple.security.app-sandbox
+    - com.apple.security.cs.disable-library-validation
+    - com.apple.security.cs.allow-jit
+    - com.apple.security.cs.allow-unsigned-executable-memory
+    - com.apple.security.cs.allow-dyld-environment-variables

@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 clackes
+# SPDX-License-Identifier: GPL-3.0-only
+
+version = 1
+
+# The whole project is GPL-3.0-only (LICENSE), except the third-party code below.
+# The SPDX header in the file, when present, takes precedence.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Tsukumo contributors"
+SPDX-License-Identifier = "GPL-3.0-only"
+
+# Documents that cite SPDX tags in their text: the annotation replaces reading
+# the content, otherwise the citations would be read as declarations.
+[[annotations]]
+path = ["Docs/**", "CLAUDE.md", "KICKOFF.md"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Tsukumo contributors"
+SPDX-License-Identifier = "GPL-3.0-only"
+
+# Vendored third-party code: mediaremote-adapter, loaded only inside
+# /usr/bin/perl and never linked into the app (Packages/Vendor/mediaremote-adapter/README.md).
+[[annotations]]
+path = "Packages/Vendor/mediaremote-adapter/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["2025 Jonas van den Berg and contributors", "2025-2026 ejbills"]
+SPDX-License-Identifier = "BSD-3-Clause"

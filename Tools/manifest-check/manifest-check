@@ -1,0 +1,84 @@
+#!/usr/bin/ruby
+# frozen_string_literal: true
+
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Compares App/manifest.yml with the compiled Info.plist and the signed
+# entitlements of the bundle (DESIGN.md §3.8). One key more or less is an error.
+#
+# Usage: Tools/manifest-check/manifest-check <Tsukumo.app> [--release]
+
+require 'json'
+require 'open3'
+require 'yaml'
+
+# Info.plist keys that the manifest must declare one by one: everything
+# that touches privacy, network, updates or attack surface.
+GOVERNED = /\ANS.*UsageDescription\z|\ANSBonjourServices\z|\ASU|\ACFBundleURLTypes\z|\ALSUIElement\z|
+           \ANSAppTransportSecurity\z|\ANSServices\z|\ALSMinimumSystemVersion\z|\ACFBundleIdentifier\z/x.freeze
+
+def plist_json(args, stdin: nil)
+  out, status = Open3.capture2('/usr/bin/plutil', '-convert', 'json', '-o', '-', *args, stdin_data: stdin.to_s)
+  abort "manifest-check: plutil cannot read #{args.last}" unless status.success?
+  JSON.parse(out)
+end
+
+app = ARGV.find { |arg| !arg.start_with?('--') }
+release = ARGV.include?('--release')
+abort 'Uso: manifest-check <Tsukumo.app> [--release]' unless app && File.directory?(app)
+
+manifest = YAML.safe_load(File.read(File.expand_path('../../App/manifest.yml', __dir__)))
+errors = []
+
+# --- Info.plist ---------------------------------------------------------------
+info = plist_json([File.join(app, 'Contents', 'Info.plist')])
+required = manifest.dig('info_plist', 'required')
+pending = manifest.dig('info_plist', 'pending') || []
+
+(required - info.keys).each { |key| errors << "Info.plist: #{key} is missing" }
+(info.keys.grep(GOVERNED) - required - (release ? pending : [])).each do |key|
+  errors << "Info.plist: #{key} is not in the manifest"
+end
+(pending & info.keys).each { |key| errors << "Info.plist: #{key} is still 'pending' in the manifest" } unless release
+(pending - info.keys).each { |key| errors << "Info.plist: #{key} is missing (release)" } if release
+
+{
+  'CFBundleIdentifier' => manifest['bundle_id'],
+  'LSMinimumSystemVersion' => manifest['min_system_version'],
+  'LSUIElement' => true,
+  'NSBonjourServices' => manifest['bonjour_services']
+}.each do |key, expected|
+  errors << "Info.plist: #{key} = #{info[key].inspect}, expected #{expected.inspect}" unless info[key] == expected
+end
+schemes = (info['CFBundleURLTypes'] || []).flat_map { |type| type['CFBundleURLSchemes'] || [] }
+unless schemes.sort == manifest['url_schemes'].sort
+  errors << "Info.plist: URL schemes #{schemes.inspect}, expected #{manifest['url_schemes'].inspect}"
+end
+
+# --- Entitlements -------------------------------------------------------------
+xml, _, status = Open3.capture3('/usr/bin/codesign', '-d', '--entitlements', '-', '--xml', app)
+abort 'manifest-check: codesign cannot read the bundle (unsigned?)' unless status.success?
+actual = xml.strip.empty? ? {} : plist_json(['-'], stdin: xml)
+
+expected = manifest.dig('entitlements', 'required').dup
+expected.merge!(manifest.dig('entitlements', 'debug_only') || {}) unless release
+pending_entitlements = manifest.dig('entitlements', 'pending') || []
+
+expected.each do |key, value|
+  errors << "Entitlements: #{key} = #{actual[key].inspect}, expected #{value.inspect}" unless actual[key] == value
+end
+(actual.keys - expected.keys).each do |key|
+  next if release && pending_entitlements.include?(key)
+
+  errors << "Entitlements: #{key} is not in the manifest"
+end
+(manifest.dig('entitlements', 'forbidden') & actual.keys).each { |key| errors << "Entitlements: #{key} is forbidden" }
+
+if errors.empty?
+  puts "manifest-check: #{File.basename(app)} matches the manifest " \
+       "(#{required.size} Info.plist keys, #{expected.size} entitlements)"
+else
+  errors.each { |error| warn "manifest-check: #{error}" }
+  exit 1
+end

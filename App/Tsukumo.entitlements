@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+SPDX-FileCopyrightText: 2026 Tsukumo contributors
+SPDX-License-Identifier: GPL-3.0-only
+
+Hardened runtime, without App Sandbox (DESIGN.md §3.8). keychain-access-groups and
+application-groups require a Team ID and a Developer ID profile: see manifest.yml.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+</dict>
+</plist>

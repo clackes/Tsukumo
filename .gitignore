@@ -1,0 +1,27 @@
+# Xcode / XcodeGen
+*.xcodeproj/
+*.xcworkspace/
+!Packages/**/*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+DerivedData/
+build/
+*.xcresult
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved.bak
+
+# Signing and secrets (never commit)
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+.env
+sparkle_private_key*
+
+# macOS
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json

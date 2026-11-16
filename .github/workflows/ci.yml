@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Base CI for Phase 0a: lint, licenses, tests and build (DESIGN.md §3.4).
+# The macos-26 label is verified (first green run on 11 Nov 2026).
+# TODO(§3.4): add macos-27 to the matrix when it becomes available.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, test, build
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Strumenti
+        run: brew install xcodegen swiftlint reuse
+      - name: Verifiche
+        run: Tools/check.sh

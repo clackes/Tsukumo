@@ -1,0 +1,173 @@
+# SPDX-FileCopyrightText: 2026 Tsukumo contributors
+# SPDX-License-Identifier: GPL-3.0-only
+#
+# Thin app project (DESIGN.md §3.4). Regenerate with:
+#   cd App && xcodegen generate
+# The .xcodeproj is not committed.
+
+name: Tsukumo
+options:
+  bundleIdPrefix: dev.local
+  developmentLanguage: en
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "26.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    ARCHS: arm64
+    MARKETING_VERSION: "0.1.6"
+    CURRENT_PROJECT_VERSION: "2"
+
+packages:
+  Core:
+    path: ../Packages/Core
+  DesignSystem:
+    path: ../Packages/DesignSystem
+  Bridges:
+    path: ../Packages/Bridges
+  Monitor:
+    path: ../Packages/Modules/Monitor
+  MenuBar:
+    path: ../Packages/Modules/MenuBar
+  Snap:
+    path: ../Packages/Modules/Snap
+  Clack:
+    path: ../Packages/Modules/Clack
+  Island:
+    path: ../Packages/Modules/Island
+  Convert:
+    path: ../Packages/Modules/Convert
+  Duo:
+    path: ../Packages/Modules/Duo
+  Switcher:
+    path: ../Packages/Modules/Switcher
+  Sound:
+    path: ../Packages/Modules/Sound
+
+targets:
+  Tsukumo:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: Localizable.xcstrings
+      - path: InfoPlist.xcstrings
+      - path: Resources/AppIcon.icns
+        buildPhase: resources
+      # Perl launcher of Now Playing backend 1 (Packages/Vendor/mediaremote-adapter).
+      - path: ../Packages/Vendor/mediaremote-adapter/run.pl
+        buildPhase: resources
+    dependencies:
+      # Embedded only, never linked: /usr/bin/perl loads it, not the app.
+      - target: MediaRemoteAdapter
+        embed: true
+        link: false
+        codeSign: true
+        copy:
+          destination: frameworks
+      - package: Core
+        product: ModuleKit
+      - package: DesignSystem
+        product: DesignSystem
+      - package: Monitor
+        product: Monitor
+      - package: MenuBar
+        product: MenuBar
+      - package: Snap
+        product: Snap
+      - package: Clack
+        product: Clack
+      - package: Island
+        product: Island
+      - package: Convert
+        product: Convert
+      - package: Duo
+        product: Duo
+      - package: Switcher
+        product: Switcher
+      - package: Sound
+        product: Sound
+      # XPC helper of Convert tier 1: embedded in Contents/XPCServices.
+      - target: Converter
+    settings:
+      base:
+        # Provisional and local only until the name is verified (DESIGN.md §1).
+        PRODUCT_BUNDLE_IDENTIFIER: dev.local.tsukumo
+        PRODUCT_NAME: Tsukumo
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: Tsukumo.entitlements
+        # Local Apple Development signature already present on the Mac. Prevents TCC
+        # from resetting permissions on every build; does not enable distribution/notarization.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: Apple Development
+        DEVELOPMENT_TEAM: VTXQ8XN4H7
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+
+  # XPC helper that runs LGPL ffmpeg for Convert (DESIGN.md §4.1, §2.5). It
+  # starts only at the first conversion that requires it and launchd shuts it down when idle.
+  Converter:
+    type: xpc-service
+    platform: macOS
+    sources:
+      - path: ../Helpers/Converter
+        excludes: ["*.sh", "Info.plist"]
+    dependencies:
+      - package: Convert
+        product: ConverterKit
+    postBuildScripts:
+      - name: ffmpeg LGPL
+        script: '"$SRCROOT/../Helpers/Converter/embed-ffmpeg.sh"'
+        basedOnDependencyAnalysis: false
+    settings:
+      base:
+        PRODUCT_NAME: Converter
+        PRODUCT_BUNDLE_IDENTIFIER: dev.local.tsukumo.Converter
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ../Helpers/Converter/Info.plist
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: Apple Development
+        DEVELOPMENT_TEAM: VTXQ8XN4H7
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        SKIP_INSTALL: YES
+
+  # mediaremote-adapter (BSD-3-Clause): library loaded inside /usr/bin/perl,
+  # which is arm64e, so that slice is needed too (DESIGN.md §2.1).
+  MediaRemoteAdapter:
+    type: library.dynamic
+    platform: macOS
+    sources:
+      - path: ../Packages/Vendor/mediaremote-adapter
+        includes: ["*.m", "include/*.h"]
+    settings:
+      base:
+        PRODUCT_NAME: MediaRemoteAdapter
+        EXECUTABLE_PREFIX: lib
+        ARCHS: arm64 arm64e
+        ONLY_ACTIVE_ARCH: NO
+        CLANG_ENABLE_OBJC_ARC: YES
+        HEADER_SEARCH_PATHS: $(SRCROOT)/../Packages/Vendor/mediaremote-adapter/include
+        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
+        SKIP_INSTALL: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: Apple Development
+        DEVELOPMENT_TEAM: VTXQ8XN4H7
+        ENABLE_HARDENED_RUNTIME: YES
+
+schemes:
+  Tsukumo:
+    build:
+      targets:
+        Tsukumo: all
+    run:
+      config: Debug
+    archive:
+      config: Release
